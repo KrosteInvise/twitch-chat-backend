@@ -17,6 +17,10 @@ public class Player {
     @Id
     @GeneratedValue(strategy = GenerationType.IDENTITY)
     private Long id;
+
+    @Column(name = "twitchname", nullable = false, unique = true)
     private String twitchName;
+
+    @Column(nullable = false)
     private Integer gold;
 }

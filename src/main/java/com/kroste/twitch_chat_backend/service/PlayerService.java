@@ -25,17 +25,19 @@ public class PlayerService {
     public void update(Long id, Integer gold) {
         Optional<Player> optionalPlayer = playerRepository.findById(id);
         if(optionalPlayer.isEmpty())
-            throw new IllegalStateException("User with id " + id + "does not exist!");
+            throw new IllegalStateException("User with id " + id + " does not exist!");
 
         Player player = optionalPlayer.get();
 
         player.setGold(gold);
+
+        playerRepository.save(player);
     }
 
     public void delete(Long id) {
         Optional<Player> optionalPlayer = playerRepository.findById(id);
         if(optionalPlayer.isEmpty())
-            throw new IllegalStateException("User with id: " +id + " does not exist!");
+            throw new IllegalStateException("User with id: " + id + " does not exist!");
         playerRepository.deleteById(id);
     }
 }

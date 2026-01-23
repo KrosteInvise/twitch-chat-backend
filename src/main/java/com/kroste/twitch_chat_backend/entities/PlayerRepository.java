@@ -7,4 +7,8 @@ import java.util.Optional;
 public interface PlayerRepository extends JpaRepository<Player, Long> {
 
     Optional<Player> findByTwitchName(String twitchName);
+
+    boolean existsByTwitchName(String twitchName);
+
+    void deleteByTwitchName(String twitchName);
 }

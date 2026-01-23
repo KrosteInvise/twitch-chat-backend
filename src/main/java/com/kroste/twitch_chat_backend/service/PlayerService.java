@@ -18,26 +18,31 @@ public class PlayerService {
         return playerRepository.save(player);
     }
 
+    public Player readById(Long id) {
+        return playerRepository.findById(id)
+                .orElseThrow(() -> new IllegalStateException("Player with id " + id + " does not exist!"));
+    }
+
+    public Player readByTwitchName(String twitchName) {
+        return playerRepository.findByTwitchName(twitchName)
+                .orElseThrow(() -> new IllegalStateException("Player with name " + twitchName + " does not exist!"));
+    }
+
     public List<Player> readAll() {
         return playerRepository.findAll();
     }
 
-    public void update(Long id, Integer gold) {
-        Optional<Player> optionalPlayer = playerRepository.findById(id);
-        if(optionalPlayer.isEmpty())
-            throw new IllegalStateException("User with id " + id + " does not exist!");
-
-        Player player = optionalPlayer.get();
-
-        player.setGold(gold);
-
-        playerRepository.save(player);
+    public Player updateGold(String twitchName, Integer newGold) {
+        Player player = readByTwitchName(twitchName);
+        player.setGold(newGold);
+        return playerRepository.save(player);
     }
 
-    public void delete(Long id) {
-        Optional<Player> optionalPlayer = playerRepository.findById(id);
-        if(optionalPlayer.isEmpty())
-            throw new IllegalStateException("User with id: " + id + " does not exist!");
+    public void deleteById(Long id) {
         playerRepository.deleteById(id);
+    }
+
+    public void deleteByTwitchName(String twitchName) {
+        playerRepository.deleteByTwitchName(twitchName);
     }
 }

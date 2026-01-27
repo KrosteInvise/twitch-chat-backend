@@ -25,27 +25,27 @@ public class PlayerController {
         return playerService.readAll();
     }
 
-    @GetMapping("{id}")
-    public Player readById(Long id) {
+    @GetMapping("/{id}")
+    public Player readById(@PathVariable Long id) {
         return playerService.readById(id);
     }
 
-    @GetMapping("by-name/{twitchName}")
+    @GetMapping("/by-name/{twitchName}")
     public Player readByTwitchName(@PathVariable String twitchName) {
         return playerService.readByTwitchName(twitchName);
     }
 
-    @PutMapping("{twitchName}/gold")
+    @PutMapping("/{twitchName}/gold")
     public void updateGold(@PathVariable String twitchName, @RequestParam Integer gold) {
         playerService.updateGold(twitchName, gold);
     }
 
-    @DeleteMapping("{id}")
+    @DeleteMapping("/{id}")
     public void deleteById(@PathVariable Long id) {
         playerService.deleteById(id);
     }
 
-    @DeleteMapping("by-name/{twitchName}")
+    @DeleteMapping("/by-name/{twitchName}")
     public void deleteByName(@PathVariable String twitchName) {
         playerService.deleteByTwitchName(twitchName);
     }

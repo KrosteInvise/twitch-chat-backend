@@ -10,7 +10,7 @@
 	</parent>
 	<groupId>com.kroste</groupId>
 	<artifactId>twitch-chat-backend</artifactId>
-	<version>0.0.1-SNAPSHOT</version>
+	<version>0.0.2</version>
 	<name>twitch-chat-backend</name>
 	<description>Spring boot backend for twitch chat bot</description>
 	<url/>

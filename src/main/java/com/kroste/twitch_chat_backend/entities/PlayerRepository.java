@@ -1,6 +1,5 @@
 package com.kroste.twitch_chat_backend.entities;
 
-import jakarta.transaction.Transactional;
 import org.springframework.data.jpa.repository.JpaRepository;
 
 import java.util.Optional;

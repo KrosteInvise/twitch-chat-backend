@@ -1,9 +1,11 @@
 package com.kroste.twitch_chat_backend.controllers;
 
 import com.kroste.twitch_chat_backend.dto.GoldTransactionRequest;
-import com.kroste.twitch_chat_backend.entities.Player;
+import com.kroste.twitch_chat_backend.entities.PlayerEntity;
 import com.kroste.twitch_chat_backend.service.PlayerService;
 import lombok.RequiredArgsConstructor;
+import org.springframework.http.HttpStatus;
+import org.springframework.http.ResponseEntity;
 import org.springframework.web.bind.annotation.*;
 
 import java.util.List;
@@ -16,42 +18,47 @@ public class PlayerController {
     public final PlayerService playerService;
 
     @PostMapping("/create")
-    public Player create(@RequestBody Player player) {
-        return playerService.create(player);
+    public ResponseEntity<PlayerEntity> create(@RequestBody PlayerEntity player) {
+        return ResponseEntity.status(HttpStatus.CREATED)
+                .body(playerService.create(player));
     }
 
     @GetMapping
-    public List<Player> readAll() {
-        return playerService.findAll();
+    public ResponseEntity<List<PlayerEntity>> findAll() {
+        return ResponseEntity.ok(playerService.findAll());
     }
 
     @GetMapping("/{id}")
-    public Player readById(@PathVariable Long id) {
-        return playerService.findById(id);
+    public ResponseEntity<PlayerEntity> findById(@PathVariable Long id) {
+        return ResponseEntity.ok(playerService.findById(id));
     }
 
     @GetMapping("/by-name/{twitchName}")
-    public Player readByTwitchName(@PathVariable String twitchName) {
+    public PlayerEntity findByTwitchName(@PathVariable String twitchName) {
         return playerService.findByTwitchName(twitchName);
     }
 
     @PutMapping("/{twitchName}/gold")
-    public void updateGold(@PathVariable String twitchName, @RequestBody GoldTransactionRequest request) {
-        playerService.updateGold(twitchName, request.getAmount());
+    public ResponseEntity<Void> updateGold(@PathVariable String twitchName, @RequestBody GoldTransactionRequest request) {
+        playerService.updateGold(twitchName, request);
+        return ResponseEntity.noContent().build();
     }
 
     @PostMapping("/{twitchName}/gold")
-    public void modifyGold(@PathVariable String twitchName, @RequestBody GoldTransactionRequest request) {
-        playerService.modifyGold(twitchName, request.getAmount());
+    public ResponseEntity<Void> modifyGold(@PathVariable String twitchName, @RequestBody GoldTransactionRequest request) {
+        playerService.modifyGold(twitchName, request);
+        return ResponseEntity.noContent().build();
     }
 
     @DeleteMapping("/{id}")
-    public void deleteById(@PathVariable Long id) {
+    public ResponseEntity<Void> deleteById(@PathVariable Long id) {
         playerService.deleteById(id);
+        return ResponseEntity.noContent().build();
     }
 
     @DeleteMapping("/by-name/{twitchName}")
-    public void deleteByName(@PathVariable String twitchName) {
+    public ResponseEntity<Void> deleteByName(@PathVariable String twitchName) {
         playerService.deleteByTwitchName(twitchName);
+        return ResponseEntity.noContent().build();
     }
 }

@@ -1,7 +1,7 @@
 package com.kroste.twitch_chat_backend.service;
 
 import com.kroste.twitch_chat_backend.dto.GoldTransactionRequest;
-import com.kroste.twitch_chat_backend.entities.Player;
+import com.kroste.twitch_chat_backend.entities.PlayerEntity;
 import com.kroste.twitch_chat_backend.entities.PlayerRepository;
 import jakarta.transaction.Transactional;
 import lombok.RequiredArgsConstructor;
@@ -18,7 +18,7 @@ public class PlayerService {
 
     public final PlayerRepository playerRepository;
 
-    public Player create(Player player) {
+    public PlayerEntity create(PlayerEntity player) {
         playerRepository.findByTwitchName(player.getTwitchName())
                 .ifPresent(p -> {
                     throw new ResponseStatusException(HttpStatus.CONFLICT, "Player with name " + player.getTwitchName() + " already exists!");
@@ -26,30 +26,30 @@ public class PlayerService {
         return playerRepository.save(player);
     }
 
-    public Player findById(Long id) {
+    public PlayerEntity findById(Long id) {
         return playerRepository.findById(id)
                 .orElseThrow(() -> new ResponseStatusException(HttpStatus.NOT_FOUND, "Player with id " + id + " does not exist!"));
     }
 
-    public Player findByTwitchName(String twitchName) {
+    public PlayerEntity findByTwitchName(String twitchName) {
         return playerRepository.findByTwitchName(twitchName)
                 .orElseThrow(() -> new ResponseStatusException(HttpStatus.NOT_FOUND, "Player with name " + twitchName + " does not exist!"));
     }
 
-    public List<Player> findAll() {
+    public List<PlayerEntity> findAll() {
         return playerRepository.findAll();
     }
 
-    public void updateGold(String twitchName, Integer newGold) {
-        Player player = findByTwitchName(twitchName);
-        player.setGold(newGold);
+    public void updateGold(String twitchName, GoldTransactionRequest request) {
+        PlayerEntity player = findByTwitchName(twitchName);
+        player.setGold(request.getAmount());
         playerRepository.save(player);
     }
 
-    public void modifyGold(String twitchName, Integer amount) {
-        Player player = findByTwitchName(twitchName);
+    public void modifyGold(String twitchName, GoldTransactionRequest request) {
+        PlayerEntity player = findByTwitchName(twitchName);
 
-        int newBalance = player.getGold() + amount;
+        int newBalance = player.getGold() + request.getAmount();
 
         if(newBalance < 0) {
             throw new ResponseStatusException(HttpStatus.CONFLICT, "Balance is below zero");

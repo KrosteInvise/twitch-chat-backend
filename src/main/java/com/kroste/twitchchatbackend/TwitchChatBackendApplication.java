@@ -1,4 +1,4 @@
-package com.kroste.twitch_chat_backend;
+package com.kroste.twitchchatbackend;
 
 import org.springframework.boot.SpringApplication;
 import org.springframework.boot.autoconfigure.SpringBootApplication;

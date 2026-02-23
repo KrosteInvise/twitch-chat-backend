@@ -1,4 +1,4 @@
-package com.kroste.twitch_chat_backend.entities;
+package com.kroste.twitchchatbackend.players;
 
 import org.springframework.data.jpa.repository.JpaRepository;
 

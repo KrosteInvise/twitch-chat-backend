@@ -1,4 +1,4 @@
-package com.kroste.twitch_chat_backend.entities;
+package com.kroste.twitchchatbackend.players;
 
 import jakarta.persistence.*;
 import lombok.AllArgsConstructor;
@@ -6,21 +6,22 @@ import lombok.Getter;
 import lombok.NoArgsConstructor;
 import lombok.Setter;
 
-@Table(name = "players")
 @Entity
 @Getter
 @Setter
 @NoArgsConstructor
 @AllArgsConstructor
+@Table(name = "players")
 public class PlayerEntity {
 
     @Id
+    @Column(name = "id")
     @GeneratedValue(strategy = GenerationType.IDENTITY)
     private Long id;
 
-    @Column(name = "twitchname", nullable = false, unique = true)
+    @Column(name = "twitch_name", nullable = false, unique = true)
     private String twitchName;
 
-    @Column(nullable = false)
+    @Column(name = "gold", nullable = false)
     private Integer gold;
 }

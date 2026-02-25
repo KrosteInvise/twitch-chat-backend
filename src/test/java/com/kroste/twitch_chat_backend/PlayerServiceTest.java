@@ -6,6 +6,7 @@ import org.junit.jupiter.api.extension.ExtendWith;
 import org.mockito.InjectMocks;
 import org.mockito.Mock;
 import org.mockito.junit.jupiter.MockitoExtension;
+import org.springframework.web.server.ResponseStatusException;
 
 import java.util.Optional;
 
@@ -37,7 +38,7 @@ class PlayerServiceTest {
 
         playerService.modifyGoldByTwitchName(name, amount);
 
-        assertEquals(150L, player.getGold());
+        assertEquals(150, player.getGold());
         verify(playerMapper).updateEntityFromDomain(player, entity);
         verify(playerRepository).save(entity);
     }
@@ -53,7 +54,7 @@ class PlayerServiceTest {
         when(playerRepository.findByTwitchName(name)).thenReturn(Optional.of(entity));
         when(playerMapper.toDomain(entity)).thenReturn(domainPlayer);
 
-        assertThrows(IllegalStateException.class, () -> {
+        assertThrows(ResponseStatusException.class, () -> {
             playerService.modifyGoldByTwitchName(name, gold);
         });
 

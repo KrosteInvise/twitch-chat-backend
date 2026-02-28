@@ -29,4 +29,17 @@ public class Player {
 
         this.gold += amount;
     }
+
+    public void playGamble(int stake, int playerRoll, int botRoll) {
+
+        if (this.gold < stake) {
+            throw new ResponseStatusException(HttpStatus.CONFLICT, "Not enough gold! Balance: " + gold);
+        }
+
+        if (playerRoll > botRoll) {
+            this.gold += stake;
+        } else if (playerRoll < botRoll) {
+            this.gold -= stake;
+        }
+    }
 }

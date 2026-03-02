@@ -16,8 +16,8 @@ public class PlayerService {
     public final PlayerRepository playerRepository;
     public final PlayerMapper playerMapper;
 
-    public PlayerEntity createPlayer(String twitchName) {
-        Player player = new Player(twitchName, 100);
+    public PlayerEntity createPlayer(String twitchName, int gold) {
+        Player player = new Player(twitchName, gold);
         playerRepository.findByTwitchName(player.getTwitchName())
                 .ifPresent(p -> {
                     throw new ResponseStatusException(HttpStatus.CONFLICT, "Player with name " + player.getTwitchName() + " already exists!");
@@ -42,7 +42,7 @@ public class PlayerService {
         return playerRepository.findAll();
     }
 
-    public void updateGoldByTwitchName(String twitchName, Integer amount) {
+    public void updateGoldByTwitchName(String twitchName, int amount) {
         PlayerEntity entity = findPlayerByTwitchName(twitchName);
 
         Player player = playerMapper.toDomain(entity);
@@ -52,7 +52,7 @@ public class PlayerService {
         playerRepository.save(entity);
     }
 
-    public void modifyGoldByTwitchName(String twitchName, Integer amount) {
+    public void modifyGoldByTwitchName(String twitchName, int amount) {
         PlayerEntity entity = findPlayerByTwitchName(twitchName);
 
         Player player = playerMapper.toDomain(entity);
@@ -63,12 +63,10 @@ public class PlayerService {
     }
     
     public void deletePlayerById(Long id) {
-        findPlayerById(id);
         playerRepository.deleteById(id);
     }
 
     public void deletePlayerByTwitchName(String twitchName) {
-        findPlayerByTwitchName(twitchName);
         playerRepository.deleteByTwitchName(twitchName);
     }
 }

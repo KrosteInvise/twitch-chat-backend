@@ -1,5 +1,6 @@
 package com.kroste.twitchchatbackend.players;
 
+import jakarta.validation.Valid;
 import jakarta.validation.constraints.NotBlank;
 import jakarta.validation.constraints.Size;
 import lombok.RequiredArgsConstructor;
@@ -10,7 +11,6 @@ import org.springframework.web.bind.annotation.*;
 
 import java.util.List;
 
-@Validated
 @RestController
 @RequiredArgsConstructor
 @RequestMapping(path = "api/players")
@@ -19,9 +19,8 @@ public class PlayerController {
     public final PlayerService playerService;
 
     @PostMapping("/create")
-    public ResponseEntity<PlayerEntity> createPlayer(@NotBlank @Size(min = 3) @RequestParam String twitchName) {
-        return ResponseEntity.status(HttpStatus.CREATED)
-                .body(playerService.createPlayer(twitchName));
+    public ResponseEntity<PlayerEntity> createPlayer(@Valid @RequestBody PlayerCreateRequest request) {
+        return ResponseEntity.status(HttpStatus.CREATED).body(playerService.createPlayer(request.twitchName(), request.gold()));
     }
 
     @GetMapping

@@ -1,12 +1,10 @@
 package com.kroste.twitchchatbackend.gamble;
 
-import jakarta.validation.constraints.Positive;
+import jakarta.validation.Valid;
 import lombok.RequiredArgsConstructor;
 import org.springframework.http.ResponseEntity;
-import org.springframework.validation.annotation.Validated;
 import org.springframework.web.bind.annotation.*;
 
-@Validated
 @RestController
 @RequiredArgsConstructor
 @RequestMapping("api/gambling")
@@ -15,7 +13,7 @@ public class GambleController {
     public final GambleService gambleService;
 
     @PostMapping("/play")
-    public ResponseEntity<Gamble> playGamble(@RequestParam String twitchName, @Positive @RequestParam int stake) {
-        return ResponseEntity.ok(gambleService.playGamble(twitchName, stake));
+    public ResponseEntity<Gamble> playGamble(@Valid @RequestBody PlayGambleRequest request) {
+        return ResponseEntity.ok(gambleService.playGamble(request.twitchName(), request.stake()));
     }
 }

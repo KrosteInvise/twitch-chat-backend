@@ -2,15 +2,17 @@ package com.kroste.twitchchatbackend.fishing;
 
 import java.util.List;
 
-public record KeepSnapshot(
+public record BiteResponse(
+        String twitchName,
+        boolean caught,
         String speciesId,
         String speciesName,
         Rarity rarity,
         List<MutationView> mutations,
-        int catchValue,
-        int score,
-        boolean newTrophy,
+        Integer catchValue,
+        Integer score,
         int goldDelta,
-        int newBalance
+        int newBalance,
+        boolean newTrophy
 ) {
 }

@@ -11,8 +11,8 @@ import java.time.Instant;
 @Getter
 @Setter
 @NoArgsConstructor
-@Table(name = "fishing_pending_catches")
-public class PendingCatchEntity {
+@Table(name = "fishing_trips")
+public class FishingTripEntity {
 
     @Id
     @GeneratedValue(strategy = GenerationType.IDENTITY)
@@ -21,14 +21,17 @@ public class PendingCatchEntity {
     @Column(name = "twitch_name", nullable = false, unique = true)
     private String twitchName;
 
-    @Column(name = "species_id", nullable = false)
+    @Column(name = "caught", nullable = false)
+    private boolean caught;
+
+    @Column(name = "species_id")
     private String speciesId;
 
-    @Column(name = "species_name", nullable = false)
+    @Column(name = "species_name")
     private String speciesName;
 
     @Enumerated(EnumType.STRING)
-    @Column(name = "rarity", nullable = false)
+    @Column(name = "rarity")
     private Rarity rarity;
 
     @Column(name = "mutation_id")
@@ -46,9 +49,6 @@ public class PendingCatchEntity {
     @Column(name = "score", nullable = false)
     private Integer score;
 
-    @Column(name = "rerolls_used", nullable = false)
-    private Integer rerollsUsed;
-
-    @Column(name = "expires_at", nullable = false)
-    private Instant expiresAt;
+    @Column(name = "resolves_at", nullable = false)
+    private Instant resolvesAt;
 }

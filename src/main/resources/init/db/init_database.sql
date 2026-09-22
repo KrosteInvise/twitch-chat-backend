@@ -1,3 +1,6 @@
+-- Initial schema for local Postgres (docker-entrypoint-initdb.d).
+-- Also kept in sync with JPA entities; hibernate ddl-auto=update can add missing bits.
+
 CREATE TABLE IF NOT EXISTS players (
     id BIGINT GENERATED ALWAYS AS IDENTITY PRIMARY KEY,
     twitch_name VARCHAR(255) NOT NULL UNIQUE,

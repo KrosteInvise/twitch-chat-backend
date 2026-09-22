@@ -1,42 +1,37 @@
 package com.kroste.twitchchatbackend.fishing;
 
 import java.time.Instant;
-import java.util.List;
 
 public record CastResponse(
-        boolean caught,
-        boolean pending,
-        String speciesId,
-        String speciesName,
-        Rarity rarity,
-        List<MutationView> mutations,
-        Integer catchValue,
-        Integer score,
+        CastStatus status,
+        int waitMinutes,
+        Instant resolvesAt,
         int castCost,
         int goldDelta,
         int newBalance,
-        Integer rerollsRemaining,
-        Integer rerollCost,
-        Instant expiresAt,
-        KeepSnapshot autoKeptPrevious
+        long remainingSeconds
 ) {
-    public static CastResponse miss(int castCost, int newBalance, KeepSnapshot autoKeptPrevious) {
+    public static CastResponse departed(int waitMinutes, Instant resolvesAt, int castCost, int newBalance) {
         return new CastResponse(
-                false,
-                false,
-                null,
-                null,
-                null,
-                List.of(),
-                null,
-                null,
+                CastStatus.DEPARTED,
+                waitMinutes,
+                resolvesAt,
                 castCost,
                 -castCost,
                 newBalance,
-                null,
-                null,
-                null,
-                autoKeptPrevious
+                waitMinutes * 60L
+        );
+    }
+
+    public static CastResponse waiting(Instant resolvesAt, long remainingSeconds, int newBalance) {
+        return new CastResponse(
+                CastStatus.WAITING,
+                0,
+                resolvesAt,
+                0,
+                0,
+                newBalance,
+                remainingSeconds
         );
     }
 }

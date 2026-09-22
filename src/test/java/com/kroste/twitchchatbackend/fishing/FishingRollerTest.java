@@ -95,6 +95,15 @@ class FishingRollerTest {
     }
 
     @Test
+    void rollWaitMinutesIsInclusive() {
+        ScriptedRandom random = new ScriptedRandom().thenInt(0).thenInt(15);
+        FishingRoller roller = new FishingRoller(catalog, random);
+
+        assertEquals(5, roller.rollWaitMinutes(5, 20));
+        assertEquals(20, roller.rollWaitMinutes(5, 20));
+    }
+
+    @Test
     void rollMutationEmptyWhenAboveAllChances() {
         FishingRoller roller = new FishingRoller(catalog, ScriptedRandom.doubles(0.99));
         Optional<Mutation> mutation = roller.rollMutation();

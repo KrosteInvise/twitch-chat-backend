@@ -23,14 +23,9 @@ public class FishingController {
         return ResponseEntity.ok(fishingService.cast(request.twitchName()));
     }
 
-    @PostMapping("/keep")
-    public ResponseEntity<KeepResponse> keep(@Valid @RequestBody FishingPlayerRequest request) {
-        return ResponseEntity.ok(fishingService.keep(request.twitchName()));
-    }
-
-    @PostMapping("/reroll")
-    public ResponseEntity<RerollResponse> reroll(@Valid @RequestBody FishingPlayerRequest request) {
-        return ResponseEntity.ok(fishingService.reroll(request.twitchName()));
+    @GetMapping("/due")
+    public ResponseEntity<List<BiteResponse>> due() {
+        return ResponseEntity.ok(fishingService.claimDue());
     }
 
     @GetMapping("/trophy/{twitchName}")

@@ -22,15 +22,12 @@ public class FishCatalog {
             new FishSpecies("catfish", "Сом", Rarity.RARE, 90, 4),
 
             new FishSpecies("sturgeon", "Осётр", Rarity.EPIC, 200, 2),
-            new FishSpecies("electric_eel", "Электрический угорь", Rarity.EPIC, 220, 2),
+            new FishSpecies("electric_eel", "Угорь", Rarity.EPIC, 220, 2),
 
             new FishSpecies("rainbow_koi", "Радужный кои", Rarity.LEGENDARY, 500, 1),
             new FishSpecies("leviathan", "Левиафан", Rarity.LEGENDARY, 550, 1)
     );
 
-    /**
-     * chance values are absolute slices of [0, 1). Sum ≈ chance of any mutation on cast.
-     */
     private final List<Mutation> mutations = List.of(
             new Mutation("shiny", "Shiny", 0.05, 2.0),
             new Mutation("giant", "Giant", 0.04, 1.5),

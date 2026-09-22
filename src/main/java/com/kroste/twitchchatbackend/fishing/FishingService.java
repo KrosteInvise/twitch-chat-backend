@@ -11,7 +11,10 @@ import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 import org.springframework.web.server.ResponseStatusException;
 
+import java.time.Clock;
+import java.time.Duration;
 import java.time.Instant;
+import java.util.ArrayList;
 import java.util.List;
 import java.util.Optional;
 
@@ -22,139 +25,54 @@ public class FishingService {
 
     private final PlayerRepository playerRepository;
     private final PlayerMapper playerMapper;
-    private final PendingCatchRepository pendingCatchRepository;
+    private final FishingTripRepository fishingTripRepository;
     private final FishingTrophyRepository fishingTrophyRepository;
     private final FishingRoller fishingRoller;
-    private final FishCatalog fishCatalog;
+    private final FishingSettings fishingSettings;
+    private final Clock clock;
 
     public CastResponse cast(String twitchName) {
         PlayerEntity playerEntity = requirePlayer(twitchName);
-        Player player = playerMapper.toDomain(playerEntity);
+        Optional<FishingTripEntity> existing = fishingTripRepository.findByTwitchName(twitchName);
+        if (existing.isPresent()) {
+            return waiting(existing.get(), playerEntity.getGold());
+        }
 
-        KeepSnapshot autoKept = autoResolveExpiredOrExistingBeforeCast(twitchName, player, playerEntity);
-
-        if (player.getGold() < FishingProperties.CAST_COST) {
+        int castCost = fishingSettings.getCastCost();
+        if (playerEntity.getGold() < castCost) {
             throw new ResponseStatusException(
                     HttpStatus.CONFLICT,
-                    "Not enough gold for cast! Need " + FishingProperties.CAST_COST + ", balance: " + player.getGold()
+                    "Не хватает золота на заброс. Нужно " + castCost + ", баланс: " + playerEntity.getGold()
             );
         }
 
-        player.changeBalance(-FishingProperties.CAST_COST);
+        Player player = playerMapper.toDomain(playerEntity);
+        player.changeBalance(-castCost);
         playerMapper.updateEntityFromDomain(player, playerEntity);
         playerRepository.save(playerEntity);
 
+        int waitMinutes = fishingRoller.rollWaitMinutes(
+                fishingSettings.getMinWaitMinutes(),
+                fishingSettings.getMaxWaitMinutes()
+        );
+        Instant resolvesAt = clock.instant().plus(Duration.ofMinutes(waitMinutes));
         CatchRoll roll = fishingRoller.roll();
-        if (!roll.caught()) {
-            return CastResponse.miss(FishingProperties.CAST_COST, player.getGold(), autoKept);
-        }
+        fishingTripRepository.save(toTrip(twitchName, roll, resolvesAt));
 
-        PendingCatchEntity pending = toPendingEntity(twitchName, roll);
-        pendingCatchRepository.save(pending);
-
-        return toCastResponse(pending, player.getGold(), autoKept);
+        return CastResponse.departed(waitMinutes, resolvesAt, castCost, player.getGold());
     }
 
-    public KeepResponse keep(String twitchName) {
-        PlayerEntity playerEntity = requirePlayer(twitchName);
-        Player player = playerMapper.toDomain(playerEntity);
-
-        PendingCatchEntity pending = pendingCatchRepository.findByTwitchName(twitchName)
-                .orElseThrow(() -> new ResponseStatusException(HttpStatus.CONFLICT, "No pending catch to keep"));
-
-        KeepSnapshot snapshot = settleKeep(pending, player, playerEntity);
-        return new KeepResponse(
-                true,
-                snapshot.speciesId(),
-                snapshot.speciesName(),
-                snapshot.rarity(),
-                snapshot.mutations(),
-                snapshot.catchValue(),
-                snapshot.score(),
-                snapshot.goldDelta(),
-                snapshot.newBalance(),
-                snapshot.newTrophy()
-        );
-    }
-
-    public RerollResponse reroll(String twitchName) {
-        PlayerEntity playerEntity = requirePlayer(twitchName);
-        Player player = playerMapper.toDomain(playerEntity);
-
-        PendingCatchEntity pending = pendingCatchRepository.findByTwitchName(twitchName)
-                .orElseThrow(() -> new ResponseStatusException(HttpStatus.CONFLICT, "No pending catch"));
-
-        if (isExpired(pending)) {
-            settleKeep(pending, player, playerEntity);
-            throw new ResponseStatusException(HttpStatus.CONFLICT, "Pending catch expired and was auto-kept");
-        }
-
-        if (pending.getRerollsUsed() >= FishingProperties.MAX_REROLLS) {
-            throw new ResponseStatusException(HttpStatus.CONFLICT, "Reroll limit reached. Use keep.");
-        }
-
-        if (player.getGold() < FishingProperties.REROLL_COST) {
-            throw new ResponseStatusException(
-                    HttpStatus.CONFLICT,
-                    "Not enough gold for reroll! Need " + FishingProperties.REROLL_COST + ", balance: " + player.getGold()
-            );
-        }
-
-        player.changeBalance(-FishingProperties.REROLL_COST);
-        playerMapper.updateEntityFromDomain(player, playerEntity);
-        playerRepository.save(playerEntity);
-
-        pending.setRerollsUsed(pending.getRerollsUsed() + 1);
-
-        RerollOutcome outcome = fishingRoller.rollRerollOutcome();
-        if (outcome == RerollOutcome.PUFF) {
-            pendingCatchRepository.delete(pending);
-            return new RerollResponse(
-                    RerollOutcome.PUFF,
-                    true,
-                    false,
-                    null,
-                    null,
-                    null,
-                    List.of(),
-                    null,
-                    null,
-                    FishingProperties.REROLL_COST,
-                    -FishingProperties.REROLL_COST,
-                    player.getGold(),
-                    null
-            );
-        }
-
-        if (outcome == RerollOutcome.STRIP) {
-            if (pending.getMutationId() == null) {
-                outcome = RerollOutcome.SAME;
-            } else {
-                applyMutation(pending, null);
+    public List<BiteResponse> claimDue() {
+        List<FishingTripEntity> due = fishingTripRepository
+                .findByResolvesAtLessThanEqualOrderByTwitchNameAsc(clock.instant());
+        List<BiteResponse> bites = new ArrayList<>();
+        for (FishingTripEntity trip : due) {
+            BiteResponse bite = settle(trip);
+            if (bite != null) {
+                bites.add(bite);
             }
-        } else if (outcome == RerollOutcome.UPGRADE) {
-            Mutation next = fishingRoller.pickMutationDifferentFrom(pending.getMutationId());
-            applyMutation(pending, next);
         }
-
-        pendingCatchRepository.save(pending);
-        int remaining = FishingProperties.MAX_REROLLS - pending.getRerollsUsed();
-
-        return new RerollResponse(
-                outcome,
-                false,
-                true,
-                pending.getSpeciesId(),
-                pending.getSpeciesName(),
-                pending.getRarity(),
-                mutationViews(pending),
-                pending.getCatchValue(),
-                pending.getScore(),
-                FishingProperties.REROLL_COST,
-                -FishingProperties.REROLL_COST,
-                player.getGold(),
-                remaining
-        );
+        return bites;
     }
 
     @Transactional(readOnly = true)
@@ -173,113 +91,99 @@ public class FishingService {
                 .toList();
     }
 
-    private KeepSnapshot autoResolveExpiredOrExistingBeforeCast(String twitchName, Player player, PlayerEntity playerEntity) {
-        Optional<PendingCatchEntity> existing = pendingCatchRepository.findByTwitchName(twitchName);
-        if (existing.isEmpty()) {
-            return null;
+    private CastResponse waiting(FishingTripEntity trip, int balance) {
+        long remaining = Duration.between(clock.instant(), trip.getResolvesAt()).getSeconds();
+        if (remaining < 0) {
+            remaining = 0;
         }
-        // Any existing pending is auto-kept before a new cast (including expired).
-        return settleKeep(existing.get(), player, playerEntity);
+        return CastResponse.waiting(trip.getResolvesAt(), remaining, balance);
     }
 
-    private KeepSnapshot settleKeep(PendingCatchEntity pending, Player player, PlayerEntity playerEntity) {
-        player.changeBalance(pending.getCatchValue());
-        playerMapper.updateEntityFromDomain(player, playerEntity);
-        playerRepository.save(playerEntity);
+    private BiteResponse settle(FishingTripEntity trip) {
+        Optional<PlayerEntity> playerEntity = playerRepository.findByTwitchNameForUpdate(trip.getTwitchName());
+        if (playerEntity.isEmpty()) {
+            fishingTripRepository.delete(trip);
+            return null;
+        }
 
-        boolean newTrophy = upsertTrophyIfBetter(pending);
-        pendingCatchRepository.delete(pending);
-
-        return new KeepSnapshot(
-                pending.getSpeciesId(),
-                pending.getSpeciesName(),
-                pending.getRarity(),
-                mutationViews(pending),
-                pending.getCatchValue(),
-                pending.getScore(),
-                newTrophy,
-                pending.getCatchValue(),
-                player.getGold()
+        PlayerEntity entity = playerEntity.get();
+        int balance = entity.getGold();
+        int goldDelta = 0;
+        boolean newTrophy = false;
+        if (trip.isCaught()) {
+            Player player = playerMapper.toDomain(entity);
+            player.changeBalance(trip.getCatchValue());
+            playerMapper.updateEntityFromDomain(player, entity);
+            playerRepository.save(entity);
+            balance = player.getGold();
+            goldDelta = trip.getCatchValue();
+            newTrophy = upsertTrophyIfBetter(trip);
+        }
+        fishingTripRepository.delete(trip);
+        return new BiteResponse(
+                trip.getTwitchName(),
+                trip.isCaught(),
+                trip.getSpeciesId(),
+                trip.getSpeciesName(),
+                trip.getRarity(),
+                mutationViews(trip),
+                trip.getCatchValue(),
+                trip.getScore(),
+                goldDelta,
+                balance,
+                newTrophy
         );
     }
 
-    private boolean upsertTrophyIfBetter(PendingCatchEntity pending) {
-        Optional<FishingTrophyEntity> existing = fishingTrophyRepository.findByTwitchName(pending.getTwitchName());
-        if (existing.isPresent() && existing.get().getScore() >= pending.getScore()) {
+    private boolean upsertTrophyIfBetter(FishingTripEntity trip) {
+        if (trip.getSpeciesId() == null) {
+            return false;
+        }
+
+        Optional<FishingTrophyEntity> existing = fishingTrophyRepository.findByTwitchName(trip.getTwitchName());
+        if (existing.isPresent() && existing.get().getScore() >= trip.getScore()) {
             return false;
         }
 
         FishingTrophyEntity trophy = existing.orElseGet(FishingTrophyEntity::new);
-        trophy.setTwitchName(pending.getTwitchName());
-        trophy.setSpeciesId(pending.getSpeciesId());
-        trophy.setSpeciesName(pending.getSpeciesName());
-        trophy.setRarity(pending.getRarity());
-        trophy.setMutationId(pending.getMutationId());
-        trophy.setMutationName(pending.getMutationName());
-        trophy.setMutationMultiplier(pending.getMutationMultiplier());
-        trophy.setCatchValue(pending.getCatchValue());
-        trophy.setScore(pending.getScore());
-        trophy.setCaughtAt(Instant.now());
+        trophy.setTwitchName(trip.getTwitchName());
+        trophy.setSpeciesId(trip.getSpeciesId());
+        trophy.setSpeciesName(trip.getSpeciesName());
+        trophy.setRarity(trip.getRarity());
+        trophy.setMutationId(trip.getMutationId());
+        trophy.setMutationName(trip.getMutationName());
+        trophy.setMutationMultiplier(trip.getMutationMultiplier());
+        trophy.setCatchValue(trip.getCatchValue());
+        trophy.setScore(trip.getScore());
+        trophy.setCaughtAt(clock.instant());
         fishingTrophyRepository.save(trophy);
         return true;
     }
 
-    private PendingCatchEntity toPendingEntity(String twitchName, CatchRoll roll) {
-        PendingCatchEntity pending = new PendingCatchEntity();
-        pending.setTwitchName(twitchName);
-        pending.setSpeciesId(roll.species().id());
-        pending.setSpeciesName(roll.species().name());
-        pending.setRarity(roll.species().rarity());
-        applyMutation(pending, roll.mutation());
-        pending.setRerollsUsed(0);
-        pending.setExpiresAt(Instant.now().plusSeconds(FishingProperties.PENDING_TTL_SECONDS));
-        return pending;
-    }
-
-    private void applyMutation(PendingCatchEntity pending, Mutation mutation) {
-        FishSpecies species = fishCatalog.findSpeciesById(pending.getSpeciesId())
-                .orElseThrow(() -> new IllegalStateException("Unknown species " + pending.getSpeciesId()));
-
-        if (mutation == null) {
-            pending.setMutationId(null);
-            pending.setMutationName(null);
-            pending.setMutationMultiplier(null);
-            CatchRoll valued = CatchRoll.of(species, null);
-            pending.setCatchValue(valued.catchValue());
-            pending.setScore(valued.score());
-            return;
+    private FishingTripEntity toTrip(String twitchName, CatchRoll roll, Instant resolvesAt) {
+        FishingTripEntity trip = new FishingTripEntity();
+        trip.setTwitchName(twitchName);
+        trip.setCaught(roll.caught());
+        trip.setCatchValue(roll.catchValue());
+        trip.setScore(roll.score());
+        trip.setResolvesAt(resolvesAt);
+        if (!roll.caught()) {
+            return trip;
         }
 
-        pending.setMutationId(mutation.id());
-        pending.setMutationName(mutation.name());
-        pending.setMutationMultiplier(mutation.priceMultiplier());
-        CatchRoll valued = CatchRoll.of(species, mutation);
-        pending.setCatchValue(valued.catchValue());
-        pending.setScore(valued.score());
+        trip.setSpeciesId(roll.species().id());
+        trip.setSpeciesName(roll.species().name());
+        trip.setRarity(roll.species().rarity());
+        if (roll.mutation() != null) {
+            trip.setMutationId(roll.mutation().id());
+            trip.setMutationName(roll.mutation().name());
+            trip.setMutationMultiplier(roll.mutation().priceMultiplier());
+        }
+        return trip;
     }
 
-    private CastResponse toCastResponse(PendingCatchEntity pending, int newBalance, KeepSnapshot autoKept) {
-        return new CastResponse(
-                true,
-                true,
-                pending.getSpeciesId(),
-                pending.getSpeciesName(),
-                pending.getRarity(),
-                mutationViews(pending),
-                pending.getCatchValue(),
-                pending.getScore(),
-                FishingProperties.CAST_COST,
-                -FishingProperties.CAST_COST,
-                newBalance,
-                FishingProperties.MAX_REROLLS - pending.getRerollsUsed(),
-                FishingProperties.REROLL_COST,
-                pending.getExpiresAt(),
-                autoKept
-        );
-    }
-
-    private List<MutationView> mutationViews(PendingCatchEntity pending) {
-        MutationView view = MutationView.from(pending.getMutationId(), pending.getMutationName());
+    private List<MutationView> mutationViews(FishingTripEntity trip) {
+        MutationView view = MutationView.from(trip.getMutationId(), trip.getMutationName());
         if (view == null) {
             return List.of();
         }
@@ -307,12 +211,8 @@ public class FishingService {
         );
     }
 
-    private boolean isExpired(PendingCatchEntity pending) {
-        return pending.getExpiresAt().isBefore(Instant.now());
-    }
-
     private PlayerEntity requirePlayer(String twitchName) {
-        return playerRepository.findByTwitchName(twitchName)
+        return playerRepository.findByTwitchNameForUpdate(twitchName)
                 .orElseThrow(() -> new ResponseStatusException(
                         HttpStatus.NOT_FOUND,
                         "Player with name " + twitchName + " does not exist!"

@@ -15,6 +15,6 @@ spring:
       show-sql: true
 
 fishing:
-  cast-cost: 5
-  min-wait-minutes: 5
-  max-wait-minutes: 20
+  cast-cost: 10
+  min-wait-minutes: 3
+  max-wait-minutes: 5

@@ -4,6 +4,9 @@ CREATE TABLE IF NOT EXISTS players (
     gold INTEGER NOT NULL
 );
 
+-- If an old DB still has fishing_*_rarity_check, run fix_rarity_check.sql once
+-- (or restart the app: FishingRarityConstraintFix drops them on startup).
+
 CREATE TABLE IF NOT EXISTS fishing_pending_catches (
     id BIGINT GENERATED ALWAYS AS IDENTITY PRIMARY KEY,
     twitch_name VARCHAR(255) NOT NULL UNIQUE,

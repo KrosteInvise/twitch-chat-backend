@@ -1,5 +1,6 @@
 -- Initial schema for local Postgres (docker-entrypoint-initdb.d).
 -- Also kept in sync with JPA entities; hibernate ddl-auto=update can add missing bits.
+-- If an old DB still has fishing_*_rarity_check, run fix_rarity_check.sql once.
 
 CREATE TABLE IF NOT EXISTS players (
     id BIGINT GENERATED ALWAYS AS IDENTITY PRIMARY KEY,

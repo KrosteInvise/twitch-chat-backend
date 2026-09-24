@@ -4,6 +4,8 @@ import jakarta.persistence.*;
 import lombok.Getter;
 import lombok.NoArgsConstructor;
 import lombok.Setter;
+import org.hibernate.annotations.JdbcTypeCode;
+import org.hibernate.type.SqlTypes;
 
 import java.time.Instant;
 
@@ -31,7 +33,8 @@ public class FishingTripEntity {
     private String speciesName;
 
     @Enumerated(EnumType.STRING)
-    @Column(name = "rarity")
+    @JdbcTypeCode(SqlTypes.VARCHAR)
+    @Column(name = "rarity", length = 32)
     private Rarity rarity;
 
     @Column(name = "mutation_id")
